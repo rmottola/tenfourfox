@@ -494,7 +494,7 @@ pref("media.track.enabled", false);
 
 // Whether to enable MediaSource support.
 pref("media.mediasource.enabled", true);
-pref("media.mediasource.mp4.enabled", false);
+pref("media.mediasource.mp4.enabled", true);
 pref("media.mediasource.webm.enabled", true);
 pref("media.mediasource.webm.audio.enabled", true);
 
@@ -4193,6 +4193,9 @@ pref("image.mem.surfacecache.discard_factor", 1);
 // automatically determined based on the system's number of cores.
 pref("image.multithreaded_decoding.limit", -1);
 
+// Whether we attempt to decode WebP images or not.
+pref("image.webp.enabled", true);
+
 // Limit for the canvas image cache. 0 means we don't limit the size of the
 // cache.
 pref("canvas.image.cache.limit", 0);
@@ -5147,6 +5150,12 @@ pref("dom.mozKillSwitch.enabled", false);
 pref("toolkit.pageThumbs.screenSizeDivisor", 7);
 pref("toolkit.pageThumbs.minWidth", 0);
 pref("toolkit.pageThumbs.minHeight", 0);
+
+// When a user cancels this number of authentication dialogs coming from
+// a single web page in a row, all following authentication dialogs will
+// be blocked (automatically canceled) for that page. The counter resets
+// when the page is reloaded. To turn this feature off, just set the limit to 0.
+pref("prompts.authentication_dialog_abuse_limit", 3);
 
 pref("tenfourfox.adblock.enabled", false);
 pref("tenfourfox.adblock.logging.enabled", false);

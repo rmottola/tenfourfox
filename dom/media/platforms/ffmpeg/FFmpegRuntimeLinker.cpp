@@ -10,6 +10,13 @@
 #include "mozilla/Preferences.h"
 #include "prlink.h"
 
+#ifdef XP_DARWIN
+  #include "prenv.h"
+  #include <dlfcn.h>
+  #include <libgen.h>
+  #include <mach-o/dyld.h>
+#endif /* XP_DARWIN */
+
 namespace mozilla
 {
 
@@ -40,7 +47,11 @@ static const char* sLibs[] = {
 #endif
 };
 
+#ifdef XP_DARWIN
+void* FFmpegRuntimeLinker::sLinkedLib = nullptr;
+#else
 PRLibrary* FFmpegRuntimeLinker::sLinkedLib = nullptr;
+#endif /* XP_DARWIN */
 const char* FFmpegRuntimeLinker::sLib = nullptr;
 static unsigned (*avcodec_version)() = nullptr;
 
@@ -60,16 +71,64 @@ FFmpegRuntimeLinker::Link()
 
   MOZ_ASSERT(NS_IsMainThread());
 
+#ifdef XP_DARWIN // Explanation below.
+  char execPath[PATH_MAX];
+  execPath[0] = '\0';
+  uint32_t pathlen = PATH_MAX;
+  _NSGetExecutablePath(execPath, &pathlen);
+  char *execDir = dirname(execPath);
+#endif /* XP_DARWIN */
+
   for (size_t i = 0; i < ArrayLength(sLibs); i++) {
     const char* lib = sLibs[i];
+#ifdef XP_DARWIN
+    /* OlgaTPark's ffmpeg loader hack.
+    
+       Loading ffmpeg on Darwin fails because by default Mozilla
+       searches for symbols defined in libavutil with a handle to libavcodec.
+       This is due to the fact that NSPR uses NSAddressOfSymbol et al. that
+       limit search only to libavcodec and not its dependencies.  We don't have
+       this issue with dlsym().  */
+    if (!(sLinkedLib = dlopen(lib, RTLD_NOW | RTLD_LOCAL))) {
+      /* Bonus time: if we don't find libavcodec in standard locations, we look
+        if our venerable ffmpeg's libraries are in the same folder as XUL. */
+      char *libFullPath = NULL;
+      if (asprintf(&libFullPath, "%s/%s", execDir, lib) > 0 && libFullPath) {
+#if DEBUG
+        fprintf(stderr, "TenFourFox looking for FFmpeg: %s\n", libFullPath);
+#endif
+        sLinkedLib = dlopen(libFullPath, RTLD_NOW | RTLD_LOCAL);
+#if DEBUG
+        if (!sLinkedLib)
+          fprintf(stderr, "Failed to load %s: %s\n", libFullPath, dlerror());
+#endif
+        free(libFullPath);
+      }
+      // Try also finding the library in ~/Library/TenFourFox-FFmpeg.
+      if (!sLinkedLib && PR_GetEnv("HOME") &&
+          asprintf(&libFullPath, "%s/Library/TenFourFox-FFmpeg/%s", PR_GetEnv("HOME"), lib) > 0 && libFullPath) {
+#if DEBUG
+        fprintf(stderr, "TenFourFox looking for FFmpeg: %s\n", libFullPath);
+#endif
+        sLinkedLib = dlopen(libFullPath, RTLD_NOW | RTLD_LOCAL);
+#if DEBUG
+        if (!sLinkedLib)
+          fprintf(stderr, "Failed to load %s: %s\n", libFullPath, dlerror());
+#endif
+        free(libFullPath);
+      }
+    }
+#else
     PRLibSpec lspec;
     lspec.type = PR_LibSpec_Pathname;
     lspec.value.pathname = lib;
     sLinkedLib = PR_LoadLibraryWithFlags(lspec, PR_LD_NOW | PR_LD_LOCAL);
+#endif /* XP_DARWIN */
     if (sLinkedLib) {
       if (Bind(lib)) {
         sLib = lib;
         sLinkStatus = LinkStatus_SUCCEEDED;
+        NS_WARNING("FFmpeg successfully linked to TenFourFox");
         return true;
       }
       // Shouldn't happen but if it does then we try the next lib..
@@ -85,6 +144,7 @@ FFmpegRuntimeLinker::Link()
 
   Unlink();
 
+  fprintf(stderr, "Warning: FFmpeg could not be linked into TenFourFox. H.264 video will not be available.\n");
   sLinkStatus = LinkStatus_FAILED;
   return false;
 }
@@ -92,7 +152,11 @@ FFmpegRuntimeLinker::Link()
 /* static */ bool
 FFmpegRuntimeLinker::Bind(const char* aLibName)
 {
+#ifdef XP_DARWIN
+  avcodec_version = (typeof(avcodec_version))dlsym(sLinkedLib,
+#else
   avcodec_version = (typeof(avcodec_version))PR_FindSymbol(sLinkedLib,
+#endif /* XP_DARWIN */
                                                            "avcodec_version");
   uint32_t fullVersion, major, minor, micro;
   fullVersion = GetVersion(major, minor, micro);
@@ -139,6 +203,17 @@ FFmpegRuntimeLinker::Bind(const char* aLibName)
   }
 
 #define LIBAVCODEC_ALLVERSION
+#ifdef XP_DARWIN
+#define AV_FUNC(func, ver)                                                     \
+  if ((ver) & version) {                                                       \
+    if (!(func = (typeof(func))dlsym(sLinkedLib, #func))) {                    \
+      FFMPEG_LOG("Couldn't load function " #func " from %s.", aLibName);       \
+      return false;                                                            \
+    }                                                                          \
+  } else {                                                                     \
+    func = (typeof(func))nullptr;                                              \
+  }
+#else
 #define AV_FUNC(func, ver)                                                     \
   if ((ver) & version) {                                                       \
     if (!(func = (typeof(func))PR_FindSymbol(sLinkedLib, #func))) {            \
@@ -148,6 +223,7 @@ FFmpegRuntimeLinker::Bind(const char* aLibName)
   } else {                                                                     \
     func = (typeof(func))nullptr;                                              \
   }
+#endif /* XP_DARWIN */
 #include "FFmpegFunctionList.h"
 #undef AV_FUNC
 #undef LIBAVCODEC_ALLVERSION
@@ -181,7 +257,12 @@ FFmpegRuntimeLinker::CreateDecoderModule()
 FFmpegRuntimeLinker::Unlink()
 {
   if (sLinkedLib) {
+#ifdef XP_DARWIN
+    NS_WARNING("FFmpeg Runtime unlinked");
+    dlclose(sLinkedLib);
+#else
     PR_UnloadLibrary(sLinkedLib);
+#endif /* XP_DARWIN */
     sLinkedLib = nullptr;
     sLib = nullptr;
     sLinkStatus = LinkStatus_INIT;

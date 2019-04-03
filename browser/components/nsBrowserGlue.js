@@ -878,6 +878,133 @@ BrowserGlue.prototype = {
     PluginCrashReporter.init();
 #endif
 
+#ifdef XP_MACOSX
+    try {
+      var applescriptService = Cc["@mozilla.org/applescript-service;1"].getService(Ci.nsIApplescriptService);
+      var applescriptCallback = {
+        isFullBrowserWindow : function(win) {
+          try {
+            var domWindow = win.QueryInterface(Ci.nsIInterfaceRequestor)
+                               .getInterface(Ci.nsIDOMWindowInternal)
+                               .QueryInterface(Ci.nsIDOMWindow);
+            return domWindow && !domWindow.closed && !domWindow.document.documentElement.getAttribute("chromehidden");
+          } catch(e) {}
+          return false;
+        },
+        getWindow : function(index) {
+          let windowList = Services.wm.getZOrderDOMWindowEnumerator("navigator:browser", true);
+          while (windowList.hasMoreElements() && index >= 0) {
+            let nextWin = windowList.getNext();
+            if (this.isFullBrowserWindow(nextWin)) {
+              if (index == 0) {
+                return nextWin;
+              }
+              index--;
+            }
+          }
+          return null;
+        },
+        createWindowAtIndex : function(index) {
+          var handler = Cc["@mozilla.org/browser/clh;1"].getService(Ci.nsIBrowserHandler);
+          var defaultArgs = handler.defaultArgs;
+          // Use the hidden window to open in case the script closes all the things.
+          Services.appShell.hiddenDOMWindow.openDialog("chrome://browser/content/",
+            "_blank", "chrome,all,dialog=no,non-remote", defaultArgs);
+        },
+        getWindows : function() {
+          var array = Cc["@mozilla.org/array;1"].createInstance(Ci.nsIMutableArray);
+          let windowList = Services.wm.getZOrderXULWindowEnumerator("navigator:browser", true);
+          while (windowList.hasMoreElements()) {
+            let nextWin = windowList.getNext();
+            if (this.isFullBrowserWindow(nextWin)) {
+              array.appendElement(nextWin, false);
+            }
+          }
+          return array;
+        },
+        getWindowIsFullScreen : function(index) {
+          let win = this.getWindow(index);
+          if (win != null)
+            return win.fullScreen;
+        },
+        setWindowIsFullScreen : function(index, fullscreen) {
+          let win = this.getWindow(index);
+          if (win != null)
+            win.fullScreen = (fullscreen) ? true : false;
+        },
+        getTabsInWindow : function(index) {
+          var array = Cc["@mozilla.org/array;1"].createInstance(Ci.nsIMutableArray);
+          let win = this.getWindow(index);
+          Array.forEach(win.gBrowser.browsers, function (b) {
+            array.appendElement(b.contentWindow, false);
+          });
+          return array;
+        },
+        getCurrentTabInWindow : function(index, tab_index) {
+          let win = this.getWindow(index);
+          return win.content;
+        },
+        createTabAtIndexInWindow : function(index, window_index) {
+          let win = this.getWindow(window_index);
+          if (win != null) {
+            let tab = win.gBrowser.addTab();
+            win.gBrowser.moveTabTo(tab, index);
+          }
+        },
+        closeTabAtIndexInWindow : function(index, window_index) {
+          let win = this.getWindow(window_index);
+          if (win != null) {
+            var tab = win.gBrowser.tabs[index];
+            win.gBrowser.removeTab(tab);
+          }
+        },
+        reloadTabAtIndexInWindow : function(index, window_index) {
+          let win = this.getWindow(window_index);
+          if (win != null) {
+            var tab = win.gBrowser.tabs[index];
+            win.gBrowser.reloadTab(tab);
+          }
+        },
+        setCurrentTabInWindow : function(index, window_index) {
+          let win = this.getWindow(window_index);
+          if (win != null) {
+            win.gBrowser.selectedTab = win.gBrowser.tabs[index];
+          }
+        },
+        closeWindowAtIndex : function(index) {
+          let win = this.getWindow(index);
+          if (win != null) {
+            // Use the soop3r s3kr1t don't ask when closing flag.
+            win.skipNextCanClose = true;
+            win.close();
+          }
+        },
+        runScriptInTabAtIndexInWindow : function(index, window_index,
+            script, rval) {
+          try {
+            let win = this.getWindow(window_index);
+            let tab = win.gBrowser.tabs[index].linkedBrowser;
+            let f = new Function("window", "document", ""+script);
+            let g = (t) => {
+              return f(t.contentWindow, t.contentDocument);
+            };
+            rval.value = g(tab);
+          } catch(e) {
+            Services.console.logStringMessage("AS-to-JS error: "+e);
+            return false;
+          }
+          return true;
+        }
+      }
+
+      applescriptService.registerWindowCallback(applescriptCallback);
+      applescriptService.registerTabCallback(applescriptCallback);
+    }
+    catch (e) {
+      dump("nsIApplescriptService could not be found\n");
+    }
+#endif
+
     Services.obs.notifyObservers(null, "browser-ui-startup-complete", "");
 
 #ifdef NIGHTLY_BUILD
@@ -1133,9 +1260,9 @@ BrowserGlue.prototype = {
       this._resetUnusedProfileNotification();
     }
 
-    this._checkForOldBuildUpdates();
+    //this._checkForOldBuildUpdates();
 
-    this._firstWindowTelemetry(aWindow);
+    //this._firstWindowTelemetry(aWindow);
     this._firstWindowLoaded();
   },
 
@@ -1221,8 +1348,8 @@ BrowserGlue.prototype = {
 
     // If there are plugins installed that are outdated, and the user hasn't
     // been warned about them yet, open the plugins update page.
-    if (Services.prefs.getBoolPref(PREF_PLUGINS_NOTIFYUSER))
-      this._showPluginUpdatePage();
+    //if (Services.prefs.getBoolPref(PREF_PLUGINS_NOTIFYUSER))
+    //  this._showPluginUpdatePage();
 
     // For any add-ons that were installed disabled and can be enabled offer
     // them to the user.

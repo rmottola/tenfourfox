@@ -1795,6 +1795,12 @@ nsProtocolProxyService::Resolve_Internal(nsIChannel *channel,
     if (mPACMan && mPACMan->IsPACURI(uri))
         return NS_OK;
 
+    // if proxies are enabled and this host:port combo is supposed to use a
+    // proxy, check for a proxy.
+    if ((mProxyConfig == PROXYCONFIG_DIRECT) ||
+        !CanUseProxy(uri, info.defaultPort))
+        return NS_OK;
+
     bool mainThreadOnly;
     if (mSystemProxySettings &&
         mProxyConfig == PROXYCONFIG_SYSTEM &&
@@ -2039,21 +2045,21 @@ nsProtocolProxyService::PruneProxyInfo(const nsProtocolInfo &info,
             return;
     }
 
-    // Now, scan to see if all remaining proxies are disabled.  If so, then
+    // Scan to see if all remaining non-direct proxies are disabled.  If so, then
     // we'll just bail and return them all.  Otherwise, we'll go and prune the
     // disabled ones.
 
-    bool allDisabled = true;
+    bool allNonDirectProxiesDisabled = true;
 
     nsProxyInfo *iter;
     for (iter = head; iter; iter = iter->mNext) {
-        if (!IsProxyDisabled(iter)) {
-            allDisabled = false;
+        if (!IsProxyDisabled(iter) && iter->mType != kProxyType_DIRECT) {
+            allNonDirectProxiesDisabled = false;
             break;
         }
     }
 
-    if (allDisabled)
+    if (allNonDirectProxiesDisabled)
         LOG(("All proxies are disabled, so trying all again"));
     else {
         // remove any disabled proxies.
