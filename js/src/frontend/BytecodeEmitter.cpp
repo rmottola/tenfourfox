@@ -195,15 +195,21 @@ BytecodeEmitter::updateLocalsToFrameSlots()
 bool
 BytecodeEmitter::emitCheck(ptrdiff_t delta, ptrdiff_t* offset)
 {
-    *offset = code().length();
-
     // Start it off moderately large to avoid repeated resizings early on.
     // ~98% of cases fit within 1024 bytes.
     if (code().capacity() == 0 && !code().reserve(1024))
         return false;
 
+    size_t oldLength = code().length();
+    *offset = ptrdiff_t(oldLength);
+
+    size_t newLength = oldLength + size_t(delta);
+    if (MOZ_UNLIKELY(newLength > MaxBytecodeLength)) {
+        ReportAllocationOverflow(cx);
+        return false;
+    }
+
     if (!code().growBy(delta)) {
-        ReportOutOfMemory(cx);
         return false;
     }
     return true;
@@ -2052,6 +2058,7 @@ BytecodeEmitter::checkSideEffects(ParseNode* pn, bool* answer)
 
       case PNK_YIELD_STAR:
       case PNK_YIELD:
+      case PNK_AWAIT:
         MOZ_ASSERT(pn->isArity(PN_BINARY));
         *answer = true;
         return true;
@@ -3591,6 +3598,20 @@ BytecodeEmitter::emitFunctionScript(ParseNode* body)
         switchToMain();
     }
 
+    if (funbox->isAsync()) {
+        // Currently short-circuit async functions with a throw.
+        // TenFourFox issue 521.
+        if (!emit1(JSOP_NULL))
+            return false;
+        if (!emit1(JSOP_THROW))
+            return false;
+        if (!emit1(JSOP_NULL))
+            return false;
+        if (!emit1(JSOP_RETURN))
+            return false;
+        goto asyncout;
+    }
+
     if (!emitTree(body))
         return false;
 
@@ -3641,6 +3662,7 @@ BytecodeEmitter::emitFunctionScript(ParseNode* body)
         if (!emit1(JSOP_CHECKRETURN))
             return false;
     }
+asyncout:
 
     // Always end the script with a JSOP_RETRVAL. Some other parts of the codebase
     // depend on this opcode, e.g. InterpreterRegs::setToEndOfScript.
@@ -5496,7 +5518,7 @@ BytecodeEmitter::emitIterator()
 bool
 BytecodeEmitter::emitForInOrOfVariables(ParseNode* pn)
 {
-    MOZ_ASSERT(pn->isKind(PNK_VAR) || pn->isKind(PNK_LET));
+    MOZ_ASSERT(pn->isKind(PNK_VAR) || pn->isKind(PNK_LET) || pn->isKind(PNK_CONST));
 
     // ES6 specifies that loop variables get a fresh binding in each iteration.
     // This is currently implemented for C-style for(;;) loops, but not
@@ -5518,7 +5540,7 @@ BytecodeEmitter::emitForInOrOfVariables(ParseNode* pn)
         if (!emitVariables(pn, DefineVars))
             return false;
     } else {
-        MOZ_ASSERT(pn->isKind(PNK_LET));
+        MOZ_ASSERT(pn->isKind(PNK_LET) || pn->isKind(PNK_CONST));
         if (!emitVariables(pn, InitializeVars))
             return false;
     }
@@ -6480,6 +6502,11 @@ BytecodeEmitter::emitFunction(ParseNode* pn, bool needsProto)
     }
 
     return true;
+}
+
+bool
+BytecodeEmitter::emitAsyncWrapper(unsigned index, bool needsHomeObject) {
+    MOZ_CRASH("NYI");
 }
 
 bool
@@ -8466,6 +8493,7 @@ BytecodeEmitter::emitTree(ParseNode* pn, EmitLineNumberNote emitLineNote)
         break;
 
       case PNK_YIELD:
+      case PNK_AWAIT:
         if (!emitYield(pn))
             return false;
         break;
@@ -8791,12 +8819,18 @@ AllocSrcNote(ExclusiveContext* cx, SrcNotesVector& notes, unsigned* index)
     if (notes.capacity() == 0 && !notes.reserve(256))
         return false;
 
-    if (!notes.growBy(1)) {
-        ReportOutOfMemory(cx);
+    size_t oldLength = notes.length();
+
+    if (MOZ_UNLIKELY(oldLength + 1 > MaxSrcNotesLength)) {
+        ReportAllocationOverflow(cx);
         return false;
     }
 
-    *index = notes.length() - 1;
+    if (!notes.growBy(1)) {
+        return false;
+    }
+
+    *index = oldLength;
     return true;
 }
 
@@ -8922,12 +8956,15 @@ BytecodeEmitter::setSrcNoteOffset(unsigned index, unsigned which, ptrdiff_t offs
         /* Maybe this offset was already set to a four-byte value. */
         if (!(*sn & SN_4BYTE_OFFSET_FLAG)) {
             /* Insert three dummy bytes that will be overwritten shortly. */
+            if (MOZ_UNLIKELY(notes.length() + 3 > MaxSrcNotesLength)) {
+                ReportAllocationOverflow(cx);
+                return false;
+            }
             jssrcnote dummy = 0;
             if (!(sn = notes.insert(sn, dummy)) ||
                 !(sn = notes.insert(sn, dummy)) ||
                 !(sn = notes.insert(sn, dummy)))
             {
-                ReportOutOfMemory(cx);
                 return false;
             }
         }

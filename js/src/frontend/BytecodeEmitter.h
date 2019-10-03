@@ -514,6 +514,8 @@ struct BytecodeEmitter
     bool emitPropOp(ParseNode* pn, JSOp op);
     bool emitPropIncDec(ParseNode* pn);
 
+    bool emitAsyncWrapper(unsigned index, bool isMethod);
+
     bool emitComputedPropertyName(ParseNode* computedPropName);
 
     // Emit bytecode to put operands for a JSOP_GETELEM/CALLELEM/SETELEM/DELELEM
@@ -658,6 +660,9 @@ struct BytecodeEmitter
     bool emitSuperElemOperands(ParseNode* pn, EmitElemOption opts = EmitElemOption::Get);
     bool emitSuperElemOp(ParseNode* pn, JSOp op, bool isCall = false);
 };
+
+static constexpr size_t MaxBytecodeLength = INT32_MAX;
+static constexpr size_t MaxSrcNotesLength = INT32_MAX;
 
 } /* namespace frontend */
 } /* namespace js */
