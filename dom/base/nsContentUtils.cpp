@@ -81,6 +81,7 @@
 #include "nsCycleCollectionParticipant.h"
 #include "nsCycleCollector.h"
 #include "nsDataHashtable.h"
+#include "nsDocShell.h"
 #include "nsDocShellCID.h"
 #include "nsDocument.h"
 #include "nsDOMCID.h"
@@ -3183,7 +3184,14 @@ nsContentUtils::GetImageFromContent(nsIImageLoadingContent* aContent,
   }
 
   if (aRequest) {
-    imgRequest.swap(*aRequest);
+    // If the consumer wants the request, verify it has actually loaded
+    // successfully.
+    uint32_t imgStatus;
+    imgRequest->GetImageStatus(&imgStatus);
+    if (imgStatus & imgIRequest::STATUS_FRAME_COMPLETE &&
+        !(imgStatus & imgIRequest::STATUS_ERROR)) {
+      imgRequest.swap(*aRequest);
+    }
   }
 
   return imgContainer.forget();
@@ -4795,25 +4803,24 @@ nsContentUtils::CombineResourcePrincipals(nsCOMPtr<nsIPrincipal>* aResourcePrinc
 
 /* static */
 void
-nsContentUtils::TriggerLink(nsIContent *aContent, nsPresContext *aPresContext,
+nsContentUtils::TriggerLink(nsIContent *aContent,
                             nsIURI *aLinkURI, const nsString &aTargetSpec,
                             bool aClick, bool aIsUserTriggered,
                             bool aIsTrusted)
 {
-  NS_ASSERTION(aPresContext, "Need a nsPresContext");
   NS_PRECONDITION(aLinkURI, "No link URI");
 
-  if (aContent->IsEditable()) {
+  if (aContent->IsEditable() || !aContent->OwnerDoc()->LinkHandlingEnabled()) {
     return;
   }
 
-  nsILinkHandler *handler = aPresContext->GetLinkHandler();
-  if (!handler) {
+  nsCOMPtr<nsIDocShell> docShell = aContent->OwnerDoc()->GetDocShell();
+  if (!docShell) {
     return;
   }
 
   if (!aClick) {
-    handler->OnOverLink(aContent, aLinkURI, aTargetSpec.get());
+    nsDocShell::Cast(docShell)->OnOverLink(aContent, aLinkURI, aTargetSpec.get());
     return;
   }
 
@@ -4848,7 +4855,7 @@ nsContentUtils::TriggerLink(nsIContent *aContent, nsPresContext *aPresContext,
       fileName.SetIsVoid(true); // No actionable download attribute was found.
     }
 
-    handler->OnLinkClick(aContent, aLinkURI,
+    nsDocShell::Cast(docShell)->OnLinkClick(aContent, aLinkURI,
                          fileName.IsVoid() ? aTargetSpec.get() : EmptyString().get(),
                          fileName, nullptr, nullptr, aIsTrusted);
   }

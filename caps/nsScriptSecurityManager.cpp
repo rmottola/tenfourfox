@@ -688,6 +688,34 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
        return NS_ERROR_DOM_BAD_URI;
     }
 
+    // See TenFourFox issue 607
+    // determine if this is a script we want to block
+    // Scripts that somehow hit hard limits should go in here
+    if (!mIsTenFourFoxTroublesomeJsAllowed &&
+            (targetScheme.EqualsLiteral("http") || targetScheme.EqualsLiteral("https"))) {
+        nsAutoCString hostname;
+        if (MOZ_LIKELY(NS_SUCCEEDED(targetBaseURI->GetHost(hostname)))) {
+            ToLowerCase(hostname);
+#define BLOC(q) hostname.EqualsLiteral(q)
+            if (0 ||
+
+#ifdef __ppc__
+                BLOC("static.twitchcdn.net") ||
+#endif // __ppc__
+
+                    0) {
+#undef BLOC
+
+#ifndef DEBUG
+                if (mIsTenFourFoxTroublesomeJsLoggingEnabled)
+#endif
+                fprintf(stderr, "Warning: TenFourFox blocking problematic script from %s.\n",
+                    hostname.get());
+                return NS_ERROR_DOM_BAD_URI;
+            }
+        }
+    }
+
     // TenFourFox issue 469
     // determine if this is a script we want to block
     if (mIsTenFourFoxAdBlockEnabled &&
@@ -990,6 +1018,7 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
                 BLOK("c.fqtag.com") ||
                 BLOK("new.fqtag.com") ||
 
+                BLOK("tag.1rx.io") ||
                 BLOK("a-nj.1rx.io") ||
                 BLOK("rxcdn.1rx.io") ||
 
@@ -1111,6 +1140,7 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
                 BLOK("js.gumgum.com") ||
 
                 BLOK("cdn.digitru.st") ||
+                BLOK("prebid.digitru.st") ||
 
                 BLOK("collector.cint.com") ||
 
@@ -1178,6 +1208,31 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
                 BLOK("e.serverbid.com") ||
 
                 BLOK("serverbid-sync.nyc3.cdn.digitaloceanspaces.com") ||
+
+                BLOK("ml314.com") ||
+
+                BLOK("ads.pro-market.net") ||
+
+                BLOK("tag.crsspxl.com") ||
+
+                BLOK("a.pub.network") ||
+                BLOK("a.publir.com") ||
+
+                BLOK("eb.proper.io") ||
+                BLOK("s2s.proper.io") ||
+                BLOK("bids.proper.io") ||
+                BLOK("events.proper.io") ||
+                BLOK("global.proper.io") ||
+                BLOK("propermedia-d.openx.net") ||
+
+                BLOK("stat.media") ||
+
+                BLOK("c.jsrdn.com") ||
+                BLOK("s.jsrdn.com") ||
+
+                BLOK("hb.emxdgt.com") ||
+
+                BLOK("lockerdome.com") ||
 
 #include "shavar-blocklist.h"
 
@@ -1763,6 +1818,7 @@ static const char* kObservedPrefs[] = {
   sFileOriginPolicyPrefName,
   "capability.policy.",
   "tenfourfox.adblock.",
+  "tenfourfox.troublesome-js.",
   nullptr
 };
 
@@ -1783,6 +1839,8 @@ nsScriptSecurityManager::nsScriptSecurityManager(void)
     , mIsJavaScriptEnabled(false)
     , mIsTenFourFoxAdBlockEnabled(false)
     , mIsTenFourFoxAdBlockLoggingEnabled(false)
+    , mIsTenFourFoxTroublesomeJsAllowed(false)
+    , mIsTenFourFoxTroublesomeJsLoggingEnabled(false)
 {
     static_assert(sizeof(intptr_t) == sizeof(void*),
                   "intptr_t and void* have different lengths on this platform. "
@@ -1923,6 +1981,12 @@ nsScriptSecurityManager::ScriptSecurityPrefChanged()
         Preferences::GetBool("tenfourfox.adblock.enabled", mIsTenFourFoxAdBlockEnabled);
     mIsTenFourFoxAdBlockLoggingEnabled =
         Preferences::GetBool("tenfourfox.adblock.logging.enabled", mIsTenFourFoxAdBlockLoggingEnabled);
+    mIsTenFourFoxTroublesomeJsAllowed =
+        Preferences::GetBool("tenfourfox.troublesome-js.allow",
+                                        mIsTenFourFoxTroublesomeJsAllowed);
+    mIsTenFourFoxTroublesomeJsLoggingEnabled =
+        Preferences::GetBool("tenfourfox.troublesome-js.logging.enabled",
+                                        mIsTenFourFoxTroublesomeJsLoggingEnabled);
 
     //
     // Rebuild the set of principals for which we allow file:// URI loads. This

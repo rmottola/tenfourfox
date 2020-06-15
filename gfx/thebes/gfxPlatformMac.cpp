@@ -288,6 +288,8 @@ gfxPlatformMac::IsFontFormatSupported(nsIURI *aFontURI, uint32_t aFormatFlags)
                 EXACT_URL("https://www.wm.com/etc.clientlibs/wm/clientlibs/react-app/resources/fonts/4f99cc7e-9e83-4698-bf36-c7033e16db05.woff");
                 EXACT_URL("https://www.wm.com/etc.clientlibs/wm/clientlibs/react-app/resources/fonts/4d27f3a7-2889-440f-a415-734d7d9e80a7.woff");
 
+		EXACT_URL("https://www.kulturstiftung-des-bundes.de/typo3conf/ext/base_ksb/Resources/Public/38c1bdeb69b2cae2f59fae38f127aa6d.woff2");
+
                 // Get the hostname to eliminate creating unnecessary test strings.
                 nsAutoCString hostname;
                 if (MOZ_LIKELY(NS_SUCCEEDED(aFontURI->GetHost(hostname)))) {
@@ -298,7 +300,8 @@ gfxPlatformMac::IsFontFormatSupported(nsIURI *aFontURI, uint32_t aFormatFlags)
                     HTTP_OR_HTTPS_SUBDIR("fonts.gstatic.com", "/ea/notosansjapanese/v6/NotoSansJP-");
                     HTTP_OR_HTTPS_SUBDIR("fonts.gstatic.com", "/s/notosansjp/v14/");
 
-                    HTTP_OR_HTTPS_SUBDIR("www.icloud.com", "/fonts/SFNSText-");
+                    HTTP_OR_HTTPS_SUBDIR("www.icloud.com", "/fonts/current/fonts/SFNSText-");
+                    HTTP_OR_HTTPS_SUBDIR("www.icloud.com", "/fonts/current/fonts/SFNSDisplay-");
 
                     HTTP_OR_HTTPS_SUBDIR("typeface.nyt.com", "/fonts/nyt-cheltenham-");
                     HTTP_OR_HTTPS_SUBDIR("typeface.nytimes.com", "/fonts/nyt-cheltenham-");
@@ -320,10 +323,20 @@ gfxPlatformMac::IsFontFormatSupported(nsIURI *aFontURI, uint32_t aFormatFlags)
                     HTTP_OR_HTTPS_SUBDIR("ici.radio-canada.ca", "/unit/app/assets/fonts/Radio-Canada/");
 
                     HTTP_OR_HTTPS_SUBDIR("www.adac.de", "/assets/font/milo-");
+                    HTTP_OR_HTTPS_SUBDIR("www.adac.de", "/static/Milo");
 
                     HTTP_OR_HTTPS_SUBDIR("www.heise.de", "/sso/fonts/SourceSansPro-");
 
                     HTTP_OR_HTTPS_SUBDIR("www.vetmed.fu-berlin.de", "/assets/default2/NexusSansWeb-P");
+
+                    HTTP_OR_HTTPS_SUBDIR("cdn.theatlantic.com", "/assets/static/a/frontend/dist/theatlantic/fonts/garamond/AGaramondPro");
+                    HTTP_OR_HTTPS_SUBDIR("cdn.theatlantic.com", "/assets/static/a/frontend/dist/theatlantic/fonts/atlantic-serif/Atlantic-Serif");
+
+                    HTTP_OR_HTTPS_SUBDIR("www.kulturstiftung-des-bundes.de", "/typo3conf/ext/base_ksb/Resources/Public/");
+
+                    HTTP_OR_HTTPS_SUBDIR("cdn.trustpilot.net", "/brand-assets/2.1.0/fonts/trustpilot-default-font-");
+
+                    HTTP_OR_HTTPS_SUBDIR("www.swr3.de", "/static/dist/fonts/TheSans/");
 
                     // Check hostname and subpatterns (TenFourFox issue 477).
                     HOST_AND_KEY("www.latimes.com", "/fonts/KisFBDisplay-");

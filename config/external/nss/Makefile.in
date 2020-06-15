@@ -10,6 +10,17 @@ CXX_WRAPPER =
 
 default::
 
+ifeq (86,$(findstring 86,$(OS_TEST)))
+# TenFourFox Intel fix
+# TO DO - pass the compiler in as an environment variable
+CC=clang-mp-3.4
+CC              += -arch i386
+CC              += -O3
+CCC=clang++-mp-3.4
+CCC += -arch i386
+CCC += -O3
+endif
+
 include $(topsrcdir)/config/makefiles/functions.mk
 
 NSS_LIBS = \
@@ -122,6 +133,7 @@ DEFAULT_GMAKE_FLAGS += NSPR_LIB_DIR=$(NSPR_LIB_DIR)
 DEFAULT_GMAKE_FLAGS += MOZILLA_CLIENT=1
 DEFAULT_GMAKE_FLAGS += NO_MDUPDATE=1
 DEFAULT_GMAKE_FLAGS += NSS_ENABLE_ECC=1
+DEFAULT_GMAKE_FLAGS += NSS_ENABLE_TLS_1_3=1
 ifeq ($(OS_ARCH)_$(GNU_CC),WINNT_1)
 DEFAULT_GMAKE_FLAGS += OS_DLLFLAGS='-static-libgcc' NSPR31_LIB_PREFIX=lib
 endif

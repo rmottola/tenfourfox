@@ -1509,14 +1509,6 @@ OptimizeMIR(MIRGenerator* mir)
     if (mir->shouldCancel("Start"))
         return false;
 
-    if (!mir->compilingAsmJS()) {
-        if (!MakeMRegExpHoistable(mir, graph))
-            return false;
-
-        if (mir->shouldCancel("Make MRegExp Hoistable"))
-            return false;
-    }
-
     gs.spewPass("BuildSSA");
     AssertBasicGraphCoherency(graph);
 
@@ -2912,10 +2904,11 @@ InvalidateActivation(FreeOp* fop, const JitActivationIterator& activations, bool
                 type = "Baseline";
             else if (it.isBailoutJS())
                 type = "Bailing";
+            JSScript* script = it.maybeForwardedScript();
             JitSpew(JitSpew_IonInvalidate,
                     "#%d %s JS frame @ %p, %s:%" PRIuSIZE " (fun: %p, script: %p, pc %p)",
-                    frameno, type, it.fp(), it.script()->maybeForwardedFilename(),
-                    it.script()->lineno(), it.maybeCallee(), (JSScript*)it.script(),
+                    frameno, type, it.fp(), script->maybeForwardedFilename(),
+                    script->lineno(), it.maybeCallee(), script,
                     it.returnAddressToFp());
             break;
           }
@@ -2961,7 +2954,7 @@ InvalidateActivation(FreeOp* fop, const JitActivationIterator& activations, bool
         if (!calledFromLinkStub && it.checkInvalidation())
             continue;
 
-        JSScript* script = it.script();
+        JSScript* script = it.maybeForwardedScript();
         if (!script->hasIonScript())
             continue;
 

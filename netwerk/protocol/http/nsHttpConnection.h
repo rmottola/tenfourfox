@@ -241,11 +241,19 @@ private:
 
     // Makes certain the SSL handshake is complete and NPN negotiation
     // has had a chance to happen
-    bool     EnsureNPNComplete();
+    bool     EnsureNPNComplete(nsresult &aOut0RTTWriteHandshakeValue,
+                               uint32_t &aOut0RTTBytesWritten);
     void     SetupSSL();
 
     // Start the Spdy transaction handler when NPN indicates spdy/*
     void     StartSpdy(uint8_t versionLevel);
+    // Like the above, but do the bare minimum to do 0RTT data, so we can back
+    // it out, if necessary
+    void     Start0RTTSpdy(uint8_t versionLevel);
+
+    // Helpers for Start*Spdy
+    nsresult TryTakeSubTransactions(nsTArray<RefPtr<nsAHttpTransaction> > &list);
+    nsresult MoveTransactionsToSpdy(nsresult status, nsTArray<RefPtr<nsAHttpTransaction> > &list);
 
     // Directly Add a transaction to an active connection for SPDY
     nsresult AddTransaction(nsAHttpTransaction *, int32_t);
@@ -349,6 +357,19 @@ private:
     // Flag to indicate connection is in inital keepalive period (fast detect).
     uint32_t                        mTCPKeepaliveConfig;
     nsCOMPtr<nsITimer>              mTCPKeepaliveTransitionTimer;
+
+    // Helper variable for 0RTT handshake;
+    bool                            m0RTTChecked; // Possible 0RTT has been
+                                                  // checked.
+    bool                            mWaitingFor0RTTResponse; // We have are
+                                                             // sending 0RTT
+                                                             // data and we
+                                                             // are waiting
+                                                             // for the end of
+                                                             // the handsake.
+    int64_t                        mContentBytesWritten0RTT;
+    nsCString                      mEarlyNegotiatedALPN;
+    bool                           mDid0RTTSpdy;
 
 private:
     // For ForceSend()

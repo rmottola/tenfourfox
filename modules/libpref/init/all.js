@@ -1041,9 +1041,6 @@ pref("dom.disable_window_open_feature.status",      true);
 
 pref("dom.allow_scripts_to_close_windows",          false);
 
-// TenFourFox issue 463
-pref("tenfourfox.dom.requestIdleCallback.enabled",  false);
-
 pref("dom.require_user_interaction_for_beforeunload", true);
 
 pref("dom.disable_open_during_load",                false);
@@ -1526,12 +1523,8 @@ pref("dom.server-events.default-reconnection-time", 5000); // in milliseconds
 // by the jar channel.
 pref("network.jar.open-unsafe-types", false);
 // If true, loading remote JAR files using the jar: protocol will be prevented.
-#ifdef RELEASE_BUILD
-// Keep allowing remote JAR files for IBM iNotes (see bug 1255139) for now.
+// See also bug 1255139 if you have issues with Lotus Notes.
 pref("network.jar.block-remote-files", false);
-#else
-pref("network.jar.block-remote-files", true);
-#endif
 
 // This preference, if true, causes all UTF-8 domain names to be normalized to
 // punycode.  The intention is to allow UTF-8 domain names as input, but never
@@ -1841,6 +1834,7 @@ pref("network.cookie.cookieBehavior",       0); // 0-Accept, 1-dontAcceptForeign
 pref("network.cookie.cookieBehavior",       0); // Keep the old default of accepting all cookies
 #endif
 pref("network.cookie.thirdparty.sessionOnly", false);
+pref("network.cookie.leave-secure-alone",   true);
 pref("network.cookie.same-site.enabled",    true); // Honor the SameSite cookie attribute
 pref("network.cookie.lifetimePolicy",       0); // 0-accept, 1-dontUse 2-acceptForSession, 3-acceptForNDays
 pref("network.cookie.alwaysAcceptSessionCookies", false);
@@ -5158,7 +5152,13 @@ pref("toolkit.pageThumbs.minHeight", 0);
 // when the page is reloaded. To turn this feature off, just set the limit to 0.
 pref("prompts.authentication_dialog_abuse_limit", 3);
 
+// TenFourFox issue 463
+pref("tenfourfox.dom.requestIdleCallback.enabled",  false);
+
 pref("tenfourfox.adblock.enabled", false);
 pref("tenfourfox.adblock.logging.enabled", false);
 pref("tenfourfox.dom.forms.date", true);
 pref("tenfourfox.dom.forms.time", true);
+
+// TenFourFox issue 583
+pref("tenfourfox.reader.force-enable", true);
