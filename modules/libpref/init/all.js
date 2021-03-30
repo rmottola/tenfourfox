@@ -637,6 +637,7 @@ pref("gfx.color_management.enablev4", true);
 
 pref("gfx.downloadable_fonts.enabled", true);
 pref("gfx.downloadable_fonts.fallback_delay", 3000);
+pref("pdfjs.display.use_document_fonts", true);
 
 // disable downloadable font cache so that behavior is consistently
 // the uncached load behavior across pages (useful for testing reflow problems)
@@ -1414,7 +1415,7 @@ pref("network.http.spdy.enabled.http2", true);
 pref("network.http.spdy.enabled.deps", true);
 pref("network.http.spdy.enforce-tls-profile", true);
 pref("network.http.spdy.chunk-size", 16000);
-pref("network.http.spdy.timeout", 180);
+pref("network.http.spdy.timeout", 170);
 pref("network.http.spdy.coalesce-hostnames", true);
 pref("network.http.spdy.persistent-settings", false);
 pref("network.http.spdy.ping-threshold", 58);
@@ -1977,6 +1978,8 @@ pref("security.notification_enable_delay", 500);
 pref("security.csp.enable", true);
 pref("security.csp.debug", false);
 pref("security.csp.experimentalEnabled", false);
+// see bug 1542194, etc.
+pref("security.csp.sendreports", false);
 
 // Default Content Security Policy to apply to privileged apps.
 pref("security.apps.privileged.CSP.default", "default-src * data: blob:; script-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'");
@@ -4095,6 +4098,7 @@ pref("signon.rememberSignons.visibilityToggle", false);
 #endif
 pref("signon.autofillForms",                true);
 pref("signon.autologin.proxy",              false);
+pref("signon.privateBrowsingCapture.enabled", false);
 pref("signon.storeWhenAutocompleteOff",     true);
 pref("signon.ui.experimental",              false);
 pref("signon.debug",                        false);
@@ -4847,28 +4851,28 @@ pref("urlclassifier.malwareTable", "goog-malware-shavar,goog-unwanted-shavar,tes
 pref("urlclassifier.phishTable", "goog-phish-shavar,test-phish-simple");
 pref("urlclassifier.downloadBlockTable", "");
 pref("urlclassifier.downloadAllowTable", "");
-pref("urlclassifier.disallow_completions", "test-malware-simple,test-phish-simple,test-unwanted-simple,test-track-simple,test-trackwhite-simple,test-forbid-simple,goog-downloadwhite-digest256,mozstd-track-digest256,mozstd-trackwhite-digest256,mozfull-track-digest256");
+pref("urlclassifier.disallow_completions", "test-malware-simple,test-phish-simple,test-unwanted-simple,test-track-simple,test-trackwhite-simple,test-block-simple,goog-downloadwhite-digest256,base-track-digest256,mozstd-trackwhite-digest256,content-track-digest256,mozplugin-block-digest256,mozplugin2-block-digest256");
 
 // The table and update/gethash URLs for Safebrowsing phishing and malware
 // checks.
-pref("urlclassifier.trackingTable", "test-track-simple,mozstd-track-digest256");
+pref("urlclassifier.trackingTable", "test-track-simple,base-track-digest256");
 pref("urlclassifier.trackingWhitelistTable", "test-trackwhite-simple,mozstd-trackwhite-digest256");
 
 // The table and global pref for blocking access to sites forbidden by policy
 pref("browser.safebrowsing.forbiddenURIs.enabled", false);
 pref("urlclassifier.forbiddenTable", "test-forbid-simple");
 
-pref("browser.safebrowsing.provider.mozilla.lists", "mozstd-track-digest256,mozstd-trackwhite-digest256,mozfull-track-digest256");
+pref("browser.safebrowsing.provider.mozilla.lists", "base-track-digest256,mozstd-trackwhite-digest256,content-track-digest256,mozplugin-block-digest256,mozplugin2-block-digest256");
 pref("browser.safebrowsing.provider.mozilla.updateURL", "https://shavar.services.mozilla.com/downloads?client=SAFEBROWSING_ID&appver=%VERSION%&pver=2.2");
 pref("browser.safebrowsing.provider.mozilla.gethashURL", "https://shavar.services.mozilla.com/gethash?client=SAFEBROWSING_ID&appver=%VERSION%&pver=2.2");
 // Set to a date in the past to force immediate download in new profiles.
 pref("browser.safebrowsing.provider.mozilla.nextupdatetime", "1");
 // Block lists for tracking protection. The name values will be used as the keys
 // to lookup the localized name in preferences.properties.
-pref("browser.safebrowsing.provider.mozilla.lists.mozstd.name", "mozstdName");
-pref("browser.safebrowsing.provider.mozilla.lists.mozstd.description", "mozstdDesc");
-pref("browser.safebrowsing.provider.mozilla.lists.mozfull.name", "mozfullName");
-pref("browser.safebrowsing.provider.mozilla.lists.mozfull.description", "mozfullDesc");
+pref("browser.safebrowsing.provider.mozilla.lists.base.name", "mozstdName");
+pref("browser.safebrowsing.provider.mozilla.lists.base.description", "mozstdDesc");
+pref("browser.safebrowsing.provider.mozilla.lists.content.name", "mozfullName");
+pref("browser.safebrowsing.provider.mozilla.lists.content.description", "mozfullDesc");
 
 // Allow users to ignore Safe Browsing warnings.
 pref("browser.safebrowsing.allowOverride", true);
@@ -5162,3 +5166,7 @@ pref("tenfourfox.dom.forms.time", true);
 
 // TenFourFox issue 583
 pref("tenfourfox.reader.force-enable", true);
+
+// TenFourFox issue 620
+pref("tenfourfox.reader.sticky", true);
+pref("tenfourfox.reader.sticky.tabs.loadInBackground", false);

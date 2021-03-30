@@ -693,18 +693,29 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
     // Scripts that somehow hit hard limits should go in here
     if (!mIsTenFourFoxTroublesomeJsAllowed &&
             (targetScheme.EqualsLiteral("http") || targetScheme.EqualsLiteral("https"))) {
-        nsAutoCString hostname;
-        if (MOZ_LIKELY(NS_SUCCEEDED(targetBaseURI->GetHost(hostname)))) {
+        nsAutoCString hostname, url;
+        if (MOZ_LIKELY(NS_SUCCEEDED(targetBaseURI->GetHost(hostname)) &&
+                       NS_SUCCEEDED(targetBaseURI->GetAsciiSpec(url)))) {
             ToLowerCase(hostname);
 #define BLOC(q) hostname.EqualsLiteral(q)
+#define BLOCU(q) url.EqualsLiteral(q)
+#define BLOCE(q) (StringEndsWith(url, NS_LITERAL_CSTRING(q)))
+
             if (0 ||
 
 #ifdef __ppc__
-                BLOC("static.twitchcdn.net") ||
+                    // wallpapers for issue 621
+                    BLOC("static-exp1.licdn.com") ||
+                    (
+                      BLOC("communities.apple.com") &&
+                      BLOCE("/public/scripts/tldr/index.js")
+                    ) ||
 #endif // __ppc__
 
                     0) {
 #undef BLOC
+#undef BLOCU
+#undef BLOCE
 
 #ifndef DEBUG
                 if (mIsTenFourFoxTroublesomeJsLoggingEnabled)
@@ -874,7 +885,9 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
                 BLOK("static.yieldmo.com") ||
                 
                 BLOK("ads.rubiconproject.com") ||
+                BLOK("eus.rubiconproject.com") ||
                 BLOK("fastlane.rubiconproject.com") ||
+                BLOK("optimized-by.rubiconproject.com") ||
                 
                 BLOK("cdn.engine.4dsply.com") ||
                 
@@ -1233,6 +1246,26 @@ nsScriptSecurityManager::CheckLoadURIWithPrincipal(nsIPrincipal* aPrincipal,
                 BLOK("hb.emxdgt.com") ||
 
                 BLOK("lockerdome.com") ||
+
+                BLOK("get.s-onetag.com") ||
+                BLOK("beacon.s-onetag.com") ||
+
+                BLOK("cdn.boomtrain.com") ||
+
+                BLOK("w.usabilla.com") ||
+
+                BLOK("beacon.sojern.com") ||
+
+                BLOK("s3.buysellads.com") ||
+                BLOK("srv.buysellads.com") ||
+
+                BLOK("ads.intentiq.com") ||
+
+                BLOK("tag.durationmedia.net") ||
+
+                BLOK("www.datadoghq-browser-agent.com") ||
+
+                BLOK("ext.chtbl.com") ||
 
 #include "shavar-blocklist.h"
 
